@@ -21,6 +21,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		@scopePath=if options.scopePath? then options.scopePath else []
 		@usedTags=if options.usedTags? then options.usedTags else {}
 		@imageId=if options.imageId? then options.imageId else 0
+		@chartId=if options.chartId? then options.chartId else 0
 		@parser= if options.parser? then options.parser else root.DocUtils.defaultParser
 		@scopeManager=new ScopeManager(@Tags,@scopePath,@usedTags,@Tags,@parser)
 	toJson: () ->
@@ -31,6 +32,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		usedTags:@scopeManager.usedTags
 		localImageCreator:@localImageCreator
 		imageId:@imageId
+		chartId:@chartId
 		parser:@parser
 	calcIntellegentlyDashElement:()->return false #to be implemented by classes that inherit xmlTemplater, eg DocxTemplater
 	getFullText:(@tagXml=@tagXml) ->
@@ -65,6 +67,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 					if @templaterState.inTag is true then @templaterState.textInsideTag+=character
 		if @DocxGen? and @DocxGen.qrCode
 			new ImgReplacer(this).findImages().replaceImages()
+			new ChartReplacer(this).findCharts().replaceCharts()
 		this
 	replaceSimpleTag:()->
 		newValue=@scopeManager.getValueFromScope(@templaterState.textInsideTag)
@@ -75,6 +78,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		newText=@scopeManager.getValueFromScope(@templaterState.tag)
 		@templaterState.moveCharacters(@templaterState.tagStart.numXmlTag,newText,subContent.text)
 		@content= subContent.replace(newText).fullText
+		
 	deleteOuterTags:(outerXmlText,sharp)->
 		#delete the opening tag
 		@templaterState.tagEnd= {"numXmlTag":@templaterState.loopOpen.end.numXmlTag,"numCharacter":@templaterState.loopOpen.end.numCharacter}
@@ -96,7 +100,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		innerXmlText=@deleteOuterTags(outerXmlText,sharp)
 		@forLoop(innerXmlText,outerXmlText)
 	xmlToBeReplaced:(noStartTag,spacePreserve, insideValue,xmlTagNumber)->
-		if noStartTag == true
+		if noStartTag == true    
 			return insideValue
 		else
 			if spacePreserve==true
@@ -106,8 +110,8 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 	replaceXmlTag: (content,options) ->
 		xmlTagNumber=options.xmlTagNumber
 		insideValue=options.insideValue
-		spacePreserve= if options.spacePreserve? then options.spacePreserve else true
-		noStartTag= if options.noStartTag? then options.noStartTag else false
+		spacePreserve= if options.spacePreserve? then options.spacePreserve else true 
+		noStartTag= if options.noStartTag? then options.noStartTag else false 
 		replacer=@xmlToBeReplaced(noStartTag,spacePreserve,insideValue,xmlTagNumber)
 		@templaterState.matches[xmlTagNumber][2]=insideValue #so that the templaterState.matches are still correct
 		startTag= @templaterState.calcXmlTagPosition(xmlTagNumber)#where the open tag starts: <w:t>
@@ -153,8 +157,8 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 
 			options=
 				insideValue:""
-				spacePreserve:false
-
+				spacePreserve:false    
+ 
 			for k in [(@templaterState.tagStart.numXmlTag+1)...@templaterState.tagEnd.numXmlTag]
 				options.xmlTagNumber=k
 				content= @replaceXmlTag(content, options)
@@ -171,7 +175,7 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		#You DashLoop= take the outer scope only if you are in a table
 		if @templaterState.loopType()=='dash'
 			return @dashLoop(@templaterState.loopOpen.element)
-		if @intelligentTagging==on
+		if @intelligentTagging==on 
 			dashElement=@calcIntellegentlyDashElement()
 			if dashElement!=false then return @dashLoop(dashElement,true)
 		@forLoop()
@@ -184,10 +188,11 @@ root.XmlTemplater =  class XmlTemplater #abstract class !!
 		subfile= new @currentClass innerTagsContent,options
 		subsubfile=subfile.applyTags()
 		@imageId=subfile.imageId
+		@chartId=subfile.chartId
 		subsubfile
 	getOuterXml: (text,start,end,xmlTag) -> #tag: w:t
 		endTag= text.indexOf('</'+xmlTag+'>',end)
-		if endTag==-1 then throw new Error("can't find endTag #{endTag}")
+		if endTag==-1 then throw new Error("can't find endTag #{xmlTag}")
 		endTag+=('</'+xmlTag+'>').length
 		startTag = Math.max text.lastIndexOf('<'+xmlTag+'>',start), text.lastIndexOf('<'+xmlTag+' ',start)
 		if startTag==-1 then throw new Error("can't find startTag")
